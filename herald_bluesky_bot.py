@@ -118,7 +118,7 @@ class HeraldBlueskyBot:
         now_bst = now.astimezone(bst)
         current_hour = now_bst.hour
 
-        if not (6 <= current_hour < 22):  # 6 AM to 10 PM BST (temporary for testing)
+        if not (6 <= current_hour < 23):  # 6 AM to 10 PM BST (temporary for testing)
             logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 6 AM-10 PM BST. Skipping run.")
             return
 
