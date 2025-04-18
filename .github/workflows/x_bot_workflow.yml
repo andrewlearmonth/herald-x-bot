@@ -38,9 +38,13 @@ jobs:
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add posted_urls.txt
-          git commit -m "Update posted_urls.txt" || echo "No changes to commit"
-          git push
+          if [ -f posted_urls.txt ]; then
+            git add posted_urls.txt
+            git commit -m "Update posted_urls.txt" || echo "No changes to commit"
+            git push
+          else
+            echo "No posted_urls.txt to commit"
+          fi
 
       - name: Upload log file
         uses: actions/upload-artifact@v4
