@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import tweepy
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+import pytz  # Added for time zone handling
 
 # Load environment variables
 load_dotenv()
@@ -106,8 +107,20 @@ class HeraldBot:
             return False
 
     def run(self):
-        """Run the bot to post one article."""
+        """Run the bot to post one article, only between 7 AM and 8 PM BST."""
         logging.info("Starting Herald bot run.")
+
+        # Check if current time is between 7 AM and 8 PM BST
+        bst = pytz.timezone('Europe/London')  # BST time zone
+        now = datetime.now(timezone.utc)  # Current time in UTC
+        now_bst = now.astimezone(bst)  # Convert to BST
+        current_hour = now_bst.hour
+
+        if not (7 <= current_hour < 20):  # 7 AM to 8 PM BST (20:00 is 8 PM)
+            logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 7 AM-8 PM BST. Skipping run.")
+            return
+
+        # Proceed with normal bot logic
         posted_urls = self.load_posted_urls()
         for url in self.fetch_article_urls():
             if url in posted_urls:
@@ -118,7 +131,7 @@ class HeraldBot:
                 logging.info(f"Skipping {url} due to missing headline or publish time.")
                 continue
             age = datetime.now(timezone.utc) - published
-            if age.total_seconds() > 3600:  # 1 hour
+            if age.total_seconds() > 43200:  # 12 hours
                 logging.info(f"Skipping old article: {url} (published at {published})")
                 continue
             if self.post_tweet(headline, url):
