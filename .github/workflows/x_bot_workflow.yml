@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: '15 * * * *'  # Run at 15 minutes past every hour
     - cron: '45 * * * *'  # Run at 45 minutes past every hour
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   run-bot:
