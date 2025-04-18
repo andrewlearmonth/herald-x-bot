@@ -97,10 +97,63 @@ class HeraldBlueskyBot:
             return None, None
 
     def post_to_bluesky(self, headline, url):
-        """Post an article to Bluesky."""
-        text = f"{headline} {url}"[:300]  # Bluesky posts are limited to 300 characters
+        """Post an article to Bluesky with a clickable link and preview card."""
+        # Combine headline and URL, ensuring it fits within Bluesky's 300-character limit
+        text = f"{headline} {url}"
+        if len(text) > 300:
+            # Truncate headline to fit URL and ensure total length <= 300
+            max_headline_len = 300 - len(url) - 1  # -1 for the space
+            headline = headline[:max_headline_len]
+            text = f"{headline} {url}"
+
         try:
-            self.client.send_post(text)
+            # Create a facet to make the URL clickable
+            # Find the URL's byte position in the text (UTF-8 encoded)
+            url_start = len(headline.encode('utf-8')) + 1  # +1 for the space
+            url_end = url_start + len(url.encode('utf-8'))
+            
+            facets = [{
+                "index": {"byteStart": url_start, "byteEnd": url_end},
+                "features": [{"$type": "app.bsky.richtext.facet#link", "uri": url}]
+            }]
+
+            # Fetch OpenGraph metadata for link preview
+            response = requests.get(url, headers=self.HEADERS, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'lxml')
+
+            # Extract OpenGraph metadata
+            og_title = soup.find('meta', property='og:title')
+            og_description = soup.find('meta', property='og:description')
+            og_image = soup.find('meta', property='og:image')
+
+            title = og_title['content'] if og_title and 'content' in og_title.attrs else headline
+            description = (og_description['content'] if og_description and 'content' in og_description.attrs
+                           else "Read more on Herald Scotland")
+            image_url = og_image['content'] if og_image and 'content' in og_image.attrs else None
+
+            # Create a link card embed
+            embed = {
+                "$type": "app.bsky.embed.external#external",
+                "uri": url,
+                "title": title[:300],  # Bluesky limits title length
+                "description": description[:1000],  # Bluesky limits description length
+            }
+
+            # If an image is available, add a thumbnail (Bluesky requires the image as a blob)
+            if image_url:
+                try:
+                    image_response = requests.get(image_url, headers=self.HEADERS, timeout=10)
+                    image_response.raise_for_status()
+                    image_data = image_response.content
+                    # Upload the image as a blob to Bluesky
+                    blob = self.client.com.atproto.repo.upload_blob(image_data).blob
+                    embed["thumb"] = blob
+                except Exception as e:
+                    logging.warning(f"Failed to upload image for link card: {e}")
+
+            # Post to Bluesky with facets and embed
+            self.client.send_post(text, facets=facets, embed=embed)
             logging.info(f"Posted to Bluesky: {text}")
             self.save_posted_url(url)
             return True
@@ -109,17 +162,17 @@ class HeraldBlueskyBot:
             return False
 
     def run(self):
-        """Run the bot to post one article, only between 6 AM and 10 PM BST (temporary for testing)."""
+        """Run the bot to post one article, only between 7 AM and 11 PM BST."""
         logging.info("Starting Herald Bluesky bot run.")
 
-        # Check if current time is between 6 AM and 10 PM BST (adjusted for testing)
+        # Check if current time is between 7 AM and 11 PM BST
         bst = pytz.timezone('Europe/London')
         now = datetime.now(timezone.utc)
         now_bst = now.astimezone(bst)
         current_hour = now_bst.hour
 
-        if not (6 <= current_hour < 23):  # 6 AM to 10 PM BST (temporary for testing)
-            logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 6 AM-10 PM BST. Skipping run.")
+        if not (7 <= current_hour < 23):  # 7 AM to 11 PM BST
+            logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 7 AM-11 PM BST. Skipping run.")
             return
 
         # Proceed with normal bot logic
