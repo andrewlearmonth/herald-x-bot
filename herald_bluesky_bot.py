@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 import pytz  # For BST time check
-from atproto import Client  # For Bluesky API
+from atproto import Client, models  # For Bluesky API
 
 # Load environment variables
 load_dotenv()
@@ -108,7 +108,6 @@ class HeraldBlueskyBot:
 
         try:
             # Create a facet to make the URL clickable
-            # Find the URL's byte position in the text (UTF-8 encoded)
             url_start = len(headline.encode('utf-8')) + 1  # +1 for the space
             url_end = url_start + len(url.encode('utf-8'))
             
@@ -132,25 +131,26 @@ class HeraldBlueskyBot:
                            else "Read more on Herald Scotland")
             image_url = og_image['content'] if og_image and 'content' in og_image.attrs else None
 
-            # Create a link card embed
-            embed = {
-                "$type": "app.bsky.embed.external#external",
-                "uri": url,
-                "title": title[:300],  # Bluesky limits title length
-                "description": description[:1000],  # Bluesky limits description length
-            }
+            # Create the external content for the link card
+            external = models.AppBskyEmbedExternal.External(
+                uri=url,
+                title=title[:300],  # Bluesky limits title length
+                description=description[:1000],  # Bluesky limits description length
+            )
 
-            # If an image is available, add a thumbnail (Bluesky requires the image as a blob)
+            # If an image is available, add a thumbnail
             if image_url:
                 try:
                     image_response = requests.get(image_url, headers=self.HEADERS, timeout=10)
                     image_response.raise_for_status()
                     image_data = image_response.content
-                    # Upload the image as a blob to Bluesky
                     blob = self.client.com.atproto.repo.upload_blob(image_data).blob
-                    embed["thumb"] = blob
+                    external.thumb = blob
                 except Exception as e:
                     logging.warning(f"Failed to upload image for link card: {e}")
+
+            # Create the embed using the correct model
+            embed = models.AppBskyEmbedExternal.Main(external=external)
 
             # Post to Bluesky with facets and embed
             self.client.send_post(text, facets=facets, embed=embed)
