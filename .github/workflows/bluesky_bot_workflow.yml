@@ -6,6 +6,9 @@ on:
     - cron: '45 * * * *'  # Run at 45 minutes past every hour
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write  # Grant write access to push posted_urls.txt
+
 jobs:
   run-bot:
     runs-on: macos-latest
