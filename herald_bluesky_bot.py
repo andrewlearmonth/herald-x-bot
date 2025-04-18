@@ -30,8 +30,13 @@ class HeraldBlueskyBot:
     def __init__(self):
         # Initialize Bluesky client
         self.client = Client()
+        handle = os.getenv("BLUESKY_HANDLE")
+        logging.info(f"Attempting to log in with handle: {handle}")
+        if not handle or not os.getenv("BLUESKY_APP_PASSWORD"):
+            logging.error("BLUESKY_HANDLE or BLUESKY_APP_PASSWORD is not set in environment variables.")
+            raise ValueError("Missing Bluesky credentials")
         self.client.login(
-            login=os.getenv("BLUESKY_HANDLE"),
+            login=handle,
             password=os.getenv("BLUESKY_APP_PASSWORD")
         )
 
@@ -104,17 +109,17 @@ class HeraldBlueskyBot:
             return False
 
     def run(self):
-        """Run the bot to post one article, only between 7 AM and 8 PM BST."""
+        """Run the bot to post one article, only between 6 AM and 10 PM BST (temporary for testing)."""
         logging.info("Starting Herald Bluesky bot run.")
 
-        # Check if current time is between 7 AM and 8 PM BST
+        # Check if current time is between 6 AM and 10 PM BST (adjusted for testing)
         bst = pytz.timezone('Europe/London')
         now = datetime.now(timezone.utc)
         now_bst = now.astimezone(bst)
         current_hour = now_bst.hour
 
-        if not (7 <= current_hour < 23):  # 7 AM to 8 PM BST
-            logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 7 AM-8 PM BST. Skipping run.")
+        if not (6 <= current_hour < 22):  # 6 AM to 10 PM BST (temporary for testing)
+            logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 6 AM-10 PM BST. Skipping run.")
             return
 
         # Proceed with normal bot logic
