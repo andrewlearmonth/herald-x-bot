@@ -1,0 +1,51 @@
+name: Run Herald Bluesky Bot
+
+on:
+  schedule:
+    - cron: '15 * * * *'  # Run at 15 minutes past every hour
+    - cron: '45 * * * *'  # Run at 45 minutes past every hour
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  run-bot:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 python-dotenv lxml pytz atproto
+
+      - name: Random delay
+        run: sleep $((RANDOM % 300))  # Sleep 0-5 minutes for varied timing
+
+      - name: Run bot
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+        run: python herald_bluesky_bot.py
+
+      - name: Commit posted URLs
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          if [ -f posted_urls.txt ]; then
+            git add posted_urls.txt
+            git commit -m "Update posted_urls.txt" || echo "No changes to commit"
+            git push
+          else
+            echo "No posted_urls.txt to commit"
+          fi
+
+      - name: Upload log file
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-log
+          path: herald_bluesky_bot.log
