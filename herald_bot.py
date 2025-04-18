@@ -116,7 +116,7 @@ class HeraldBot:
         now_bst = now.astimezone(bst)  # Convert to BST
         current_hour = now_bst.hour
 
-        if not (7 <= current_hour < 23):  # 7 AM to 8 PM BST (20:00 is 8 PM)
+        if not (7 <= current_hour < 20):  # 7 AM to 8 PM BST (20:00 is 8 PM)
             logging.info(f"Current time {now_bst.strftime('%Y-%m-%d %H:%M:%S %Z')} is outside 7 AM-8 PM BST. Skipping run.")
             return
 
