@@ -21,7 +21,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 tweepy python-dotenv lxml
+        run: pip install requests beautifulsoup4 tweepy python-dotenv lxml pytz
 
       - name: Random delay
         run: sleep $((RANDOM % 300))  # Sleep 0-5 minutes for varied timing
