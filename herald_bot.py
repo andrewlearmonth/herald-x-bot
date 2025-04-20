@@ -24,7 +24,7 @@ logging.basicConfig(
 class HeraldBot:
     BASE_URL = "https://www.heraldscotland.com"
     POLITICS_URL = f"{BASE_URL}/politics/"
-    POSTED_URLS_FILE = "posted_urls.txt"
+    POSTED_URLS_FILE = "posted_urls_twitter.txt"
     HEADERS = {"User-Agent": "Mozilla/5.0"}
 
     def __init__(self):
