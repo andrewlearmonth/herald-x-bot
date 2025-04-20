@@ -1,32 +1,31 @@
-name: Run Herald Bot
+name: Run Herald Twitter Bot
 
 on:
   schedule:
-    - cron: '15 * * * *'  # Run at 15 minutes past every hour
-    - cron: '45 * * * *'  # Run at 45 minutes past every hour
-  workflow_dispatch:  # Allow manual triggering
+    - cron: '15,45 * * * *'  # Runs at 15 and 45 minutes past every hour
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   run-bot:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}  # Use the default GITHUB_TOKEN
+          persist-credentials: true  # Ensure credentials persist for git push
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 tweepy python-dotenv lxml pytz
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 tweepy python-dotenv pytz
 
-      - name: Random delay
-        run: sleep $((RANDOM % 300))  # Sleep 0-5 minutes for varied timing
-
-      - name: Run bot
+      - name: Run Herald Twitter Bot
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -38,16 +37,6 @@ jobs:
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          if [ -f posted_urls.txt ]; then
-            git add posted_urls.txt
-            git commit -m "Update posted_urls.txt" || echo "No changes to commit"
-            git push
-          else
-            echo "No posted_urls.txt to commit"
-          fi
-
-      - name: Upload log file
-        uses: actions/upload-artifact@v4
-        with:
-          name: bot-log
-          path: herald_bot.log
+          git add posted_urls.txt
+          git commit -m "Update posted_urls.txt" || echo "No changes to commit"
+          git push
