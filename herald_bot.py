@@ -109,6 +109,15 @@ class HeraldBot:
 
     def run(self):
         logging.info("Starting Herald bot run.")
+
+        # Print public IP of GitHub Actions runner (to help debug firewall issues)
+        try:
+            ip = requests.get('https://api.ipify.org').text
+            logging.info(f"GitHub Actions public IP: {ip}")
+        except Exception as e:
+            logging.warning(f"Failed to get public IP: {e}")
+
+        # Only run between 07:00 and 20:00 BST
         bst = pytz.timezone('Europe/London')
         now = datetime.now(timezone.utc).astimezone(bst)
         if not (7 <= now.hour < 20):
