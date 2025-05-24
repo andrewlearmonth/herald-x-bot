@@ -1,7 +1,6 @@
-# herald_bot.py (Twitter bot)
+# herald_bot.py (Twitter bot using Playwright)
 import os
 import logging
-import requests
 import re
 import time
 import random
@@ -10,6 +9,7 @@ import tweepy
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 import pytz
+from playwright.sync_api import sync_playwright
 
 # Load environment variables
 load_dotenv()
@@ -28,17 +28,6 @@ class HeraldBot:
     BASE_URL = "https://www.heraldscotland.com"
     POLITICS_URL = f"{BASE_URL}/politics/"
     POSTED_URLS_FILE = "posted_urls_twitter.txt"
-    HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/123.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-GB,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Connection": "keep-alive"
-    }
 
     def __init__(self):
         self.client = tweepy.Client(
@@ -61,9 +50,15 @@ class HeraldBot:
     def fetch_article_urls(self):
         try:
             time.sleep(random.uniform(1.5, 3.5))
-            response = requests.get(self.POLITICS_URL, headers=self.HEADERS, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(self.POLITICS_URL, timeout=30000)
+                page.wait_for_timeout(5000)  # wait for JS to load
+                html = page.content()
+                browser.close()
+
+            soup = BeautifulSoup(html, 'lxml')
             urls = set()
             for link in soup.find_all('a', href=True):
                 href = link['href'].split('#')[0]
@@ -76,15 +71,21 @@ class HeraldBot:
             logging.info(f"Found {len(urls)} article URLs.")
             return list(urls)
         except Exception as e:
-            logging.error(f"Failed to fetch URLs from {self.POLITICS_URL}: {e}")
+            logging.error(f"Failed to fetch URLs with Playwright: {e}")
             return []
 
     def get_article_info(self, url):
         try:
             time.sleep(random.uniform(1.5, 3.5))
-            response = requests.get(url, headers=self.HEADERS, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(url, timeout=30000)
+                page.wait_for_timeout(3000)
+                html = page.content()
+                browser.close()
+
+            soup = BeautifulSoup(html, 'lxml')
             headline = soup.find('h1').get_text(strip=True) if soup.find('h1') else None
             time_tag = soup.find('time')
             published = (
@@ -93,7 +94,7 @@ class HeraldBot:
             )
             return headline, published
         except Exception as e:
-            logging.warning(f"Failed to extract info for {url}: {e}")
+            logging.warning(f"Failed to extract info for {url} with Playwright: {e}")
             return None, None
 
     def post_tweet(self, headline, url):
@@ -109,13 +110,6 @@ class HeraldBot:
 
     def run(self):
         logging.info("Starting Herald bot run.")
-
-        # Print public IP of GitHub Actions runner (to help debug firewall issues)
-        try:
-            ip = requests.get('https://api.ipify.org').text
-            logging.info(f"GitHub Actions public IP: {ip}")
-        except Exception as e:
-            logging.warning(f"Failed to get public IP: {e}")
 
         # Only run between 07:00 and 20:00 BST
         bst = pytz.timezone('Europe/London')
