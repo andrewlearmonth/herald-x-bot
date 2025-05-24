@@ -8,6 +8,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -20,10 +21,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies (including Playwright)
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 tweepy python-dotenv pytz lxml
+          pip install requests beautifulsoup4 tweepy python-dotenv pytz lxml playwright
+          python -m playwright install --with-deps
 
       - name: Run Herald Twitter Bot
         env:
@@ -40,4 +42,5 @@ jobs:
           touch posted_urls_twitter.txt
           git add posted_urls_twitter.txt || echo "No files to add"
           git commit -m "Update posted_urls_twitter.txt" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          git pull origin main --rebase || echo "No pull needed"
+          git push || echo "Nothing to push"
